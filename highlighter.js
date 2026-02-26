@@ -17,8 +17,10 @@
     return window.location.origin + '/';
   })();
 
-  var highlights = [];
-  var hlCounter  = 0;
+  var highlights   = [];
+  var hlCounter    = 0;
+  var savedRange   = null;   // Range saved at mouseup — survives popup click
+  var savedText    = '';
 
   /* ── STYLES ── */
   var style = document.createElement('style');
@@ -182,6 +184,8 @@
     '<button class="hl-btn" onclick="window.__lumHighlight()">✦ Surligner</button>',
     '<button class="cancel-btn" onclick="window.__lumHidePopup()">✕</button>'
   ].join('');
+  // Prevent mousedown from clearing the text selection before click fires
+  popup.addEventListener('mousedown', function(e) { e.preventDefault(); });
   document.body.appendChild(popup);
 
   /* ── TOAST ── */
@@ -220,8 +224,7 @@
   };
 
   /* ── SELECTION LISTENER ── */
-  var pendingSel = null;
-  var pendingRect = null;
+
 
   document.addEventListener('mouseup', function(e) {
     if (e.target.closest && (e.target.closest('#lum-toolbar') || e.target.closest('#lum-popup'))) return;
@@ -246,13 +249,22 @@
 
   /* ── HIGHLIGHT ACTION ── */
   window.__lumHighlight = function() {
-    if (!pendingSel || !pendingSel.rangeCount) {
+    if (!savedRange && !savedText) {
       window.__lumHidePopup();
+      showToast('Selectionnez du texte dabord');
       return;
     }
-    var range = pendingSel.getRangeAt(0);
-    var text  = pendingSel.toString().trim();
+    var text = savedText;
+    var range = savedRange;
     if (!text) { window.__lumHidePopup(); return; }
+    // Restore the range into the selection so surroundContents works
+    if (range) {
+      try {
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch(err) { /* ignore */ }
+    }
 
     var id = 'lum-' + (++hlCounter);
 
@@ -297,10 +309,12 @@
     }
 
     highlights.push({ id: id, text: text });
-    window.getSelection().removeAllRanges();
+    try { window.getSelection().removeAllRanges(); } catch(e) {}
+    savedRange = null;
+    savedText  = '';
     window.__lumHidePopup();
     updateCount();
-    showToast('✦ Surlignage ' + highlights.length + ' ajouté');
+    showToast('Surlignage ' + highlights.length + ' ajoute !');
   };
 
   function removeHighlight(id) {
