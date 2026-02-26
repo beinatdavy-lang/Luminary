@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ReadLater">
+<meta name="theme-color" content="#09090d">
+<title>ReadLater</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="overlay-bg" id="bgOverlay" onclick="closeSidebar()"></div>
+
+<!-- PANNEAU DE CAPTURE -->
+<div class="capture-panel" id="capturePanel">
+  <div class="capture-header">
+    <h2>Capturer un fragment</h2>
+    <button class="capture-cancel" onclick="closeCapture()">Annuler</button>
+  </div>
+  <div class="source-tabs">
+    <button class="stab active web"  data-tab="web"     onclick="switchTab('web')">🌐 Web</button>
+    <button class="stab"             data-tab="email"   onclick="switchTab('email')">✉️ Email</button>
+    <button class="stab"             data-tab="youtube" onclick="switchTab('youtube')">▶️ YouTube</button>
+    <button class="stab"             data-tab="podcast" onclick="switchTab('podcast')">🎙️ Podcast</button>
+    <button class="stab"             data-tab="kindle"  onclick="switchTab('kindle')">📚 Kindle</button>
+    <button class="stab"             data-tab="pdf"     onclick="switchTab('pdf')">📄 PDF</button>
+  </div>
+
+  <!-- WEB -->
+  <div id="fields-web">
+    <div class="field"><label>Texte sélectionné *</label><textarea id="cpQuote" rows="5" placeholder="Collez ou sélectionnez le passage…"></textarea></div>
+    <div class="field"><label>Source</label><input id="cpSource" type="text" placeholder="Auteur, site, newsletter…"></div>
+    <div class="field"><label>URL</label><input id="cpUrl" type="url" placeholder="https://…"></div>
+    <div class="field"><label>Note</label><textarea id="cpNote" rows="2" placeholder="Ce que ça vous inspire…"></textarea></div>
+    <div class="field"><label>Tags</label><input id="cpTags" type="text" placeholder="IA, design, startup…"></div>
+  </div>
+
+  <!-- EMAIL -->
+  <div id="fields-email" style="display:none">
+    <div class="field"><label>Texte sélectionné *</label><textarea id="cpQuote" rows="5" placeholder="Collez le passage…"></textarea></div>
+    <div class="field"><label>Source</label><input id="cpSource" type="text" placeholder="Newsletter, expéditeur…"></div>
+    <div class="field"><label>Note</label><textarea id="cpNote" rows="2" placeholder="Ce que ça vous inspire…"></textarea></div>
+    <div class="field"><label>Tags</label><input id="cpTags" type="text" placeholder="IA, design, startup…"></div>
+  </div>
+
+  <!-- YOUTUBE -->
+  <div id="fields-youtube" style="display:none">
+    <div class="field">
+      <label>URL YouTube *</label>
+      <div class="yt-fetch-row">
+        <input id="ytUrlInput" type="url" placeholder="https://youtube.com/watch?v=…">
+        <button class="yt-fetch-btn" id="fetchBtn" onclick="fetchTranscript()">▶️ Charger</button>
+      </div>
+    </div>
+    <div class="yt-info-box" id="ytInfoBox">
+      <img class="yt-thumb" id="ytThumb" src="" alt="">
+      <div class="yt-title"   id="ytTitle"></div>
+      <div class="yt-channel" id="ytChannel"></div>
+    </div>
+    <div class="transcript-box" id="transcriptBox">
+      <div class="transcript-header">
+        <span>📝 Retranscription — appuyez sur les lignes pour sélectionner</span>
+      </div>
+      <div class="transcript-scroll" id="transcriptScroll"></div>
+      <div class="transcript-actions">
+        <button class="btn btn-red" onclick="selectAllTranscript()">Tout sélectionner</button>
+        <button class="btn"         onclick="clearTranscriptSelection()">Effacer</button>
+      </div>
+    </div>
+    <div class="field"><label>Passage sélectionné</label><textarea id="cpQuote" rows="3" placeholder="Appuyez sur les lignes ci-dessus…"></textarea></div>
+    <div class="field"><label>Source / Chaîne</label><input id="cpSource" type="text" placeholder="Chaîne YouTube…"></div>
+    <div class="field"><label>URL</label><input id="cpUrl" type="url" placeholder="https://youtube.com/watch?v=…"></div>
+    <div class="field"><label>Note</label><textarea id="cpNote" rows="2" placeholder="Ce que ça vous inspire…"></textarea></div>
+    <div class="field"><label>Tags</label><input id="cpTags" type="text" placeholder="IA, design, startup…"></div>
+  </div>
+
+  <!-- PODCAST -->
+  <div id="fields-podcast" style="display:none">
+    <div class="field">
+      <label>URL de l'épisode</label>
+      <div class="yt-fetch-row">
+        <input id="podUrlInput" type="url" placeholder="https://open.spotify.com/episode/… ou RSS…">
+        <button class="yt-fetch-btn" id="podFetchBtn" onclick="fetchPodcast()" style="background:var(--purple)">🎙️ Charger</button>
+      </div>
+    </div>
+    <div class="yt-info-box" id="podInfoBox">
+      <div class="yt-info-text">
+        <div class="yt-title"   id="podTitle"></div>
+        <div class="yt-channel" id="podChannel"></div>
+      </div>
+    </div>
+    <div class="transcript-box" id="podTranscriptBox">
+      <div class="transcript-header">🎙️ RETRANSCRIPTION — appuyez sur les lignes pour sélectionner</div>
+      <div class="transcript-scroll" id="podTranscriptScroll"></div>
+      <div class="transcript-actions">
+        <button class="btn btn-red" onclick="selectAllPodcast()">Tout sélectionner</button>
+        <button class="btn"         onclick="clearPodSelection()">Effacer</button>
+      </div>
+    </div>
+    <div class="field" id="podManualBox" style="display:none">
+      <label>Saisie manuelle du passage</label>
+      <textarea id="cpQuote" rows="4" placeholder="Collez ou tapez le passage que vous voulez retenir…"></textarea>
+    </div>
+    <div class="field"><label>Passage retenu</label><textarea id="cpQuote" rows="3" placeholder="Sélectionnez des lignes ci-dessus ou saisissez…"></textarea></div>
+    <div class="field"><label>Podcast / Émission</label><input id="cpSource" type="text" placeholder="Nom du podcast…"></div>
+    <div class="field"><label>URL</label><input id="cpUrl" type="url" placeholder="https://…"></div>
+    <div class="field"><label>Note</label><textarea id="cpNote" rows="2" placeholder="Ce que ça vous inspire…"></textarea></div>
+    <div class="field"><label>Tags</label><input id="cpTags" type="text" placeholder="IA, design, startup…"></div>
+  </div>
+
+  <!-- KINDLE -->
+  <div id="fields-kindle" style="display:none">
+    <div class="kindle-import-box">
+      <div class="kindle-import-title">📚 Importer depuis read.amazon.com</div>
+      <div class="kindle-import-steps">
+        <div class="step"><div class="step-n">1</div><div class="step-txt">Allez sur <strong>read.amazon.com</strong> → ouvrez un livre → cliquez <strong>Bloc-notes</strong> (icône carnet)</div></div>
+        <div class="step"><div class="step-n">2</div><div class="step-txt">Faites <strong>⌘A → ⌘C</strong> pour tout copier, ou exportez en HTML</div></div>
+        <div class="step"><div class="step-n">3</div><div class="step-txt">Collez ci-dessous ou importez le fichier</div></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Titre du livre</label>
+      <input id="kindleBookTitle" type="text" placeholder="Nom du livre — détecté automatiquement si possible">
+    </div>
+
+    <div class="field">
+      <label>Coller le contenu copié depuis read.amazon.com</label>
+      <textarea id="kindlePasteArea" rows="6" placeholder="Collez ici le contenu copié depuis read.amazon.com…"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn btn-gold" onclick="handleKindlePaste()" style="flex:1">Analyser le contenu</button>
+      <label class="btn" style="cursor:pointer;position:relative">
+        Importer un fichier .html
+        <input type="file" accept=".html,.htm,.txt" onchange="handleKindleFile(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+      </label>
+    </div>
+
+    <div id="kindlePreviewBox" style="display:none">
+      <div class="kindle-preview-header">
+        <span id="kindleCount"></span>
+        <button class="btn" style="color:var(--gold);border-color:var(--gold)" onclick="importKindleAll()">📚 Tout importer →</button>
+      </div>
+      <div id="kindlePreviewList"></div>
+    </div>
+  </div>
+
+    <!-- PDF -->
+  <div id="fields-pdf" style="display:none">
+    <div class="field"><label>Texte sélectionné *</label><textarea id="cpQuote" rows="5" placeholder="Collez le passage du PDF…"></textarea></div>
+    <div class="field"><label>Source</label><input id="cpSource" type="text" placeholder="Titre, auteur…"></div>
+    <div class="field"><label>Note</label><textarea id="cpNote" rows="2" placeholder="Ce que ça vous inspire…"></textarea></div>
+    <div class="field"><label>Tags</label><input id="cpTags" type="text" placeholder="IA, design, startup…"></div>
+  </div>
+
+  <button class="save-btn" onclick="saveCapture()">Sauvegarder ✓</button>
+</div>
+
+<!-- APP PRINCIPALE -->
+<div class="shell" id="mainShell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <svg class="logo-yinyang" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="30" stroke="rgba(200,165,90,0.35)" stroke-width="1"/>
+        <path d="M32 2 A30 30 0 0 1 32 62 A15 15 0 0 1 32 32 A15 15 0 0 0 32 2Z" fill="rgba(200,165,90,0.12)"/>
+        <circle cx="32" cy="17" r="5" fill="rgba(200,165,90,0.25)"/>
+        <circle cx="32" cy="47" r="5" fill="rgba(200,165,90,0.08)"/>
+        <circle cx="32" cy="17" r="2" fill="rgba(200,165,90,0.6)"/>
+      </svg>
+      <div class="logo-mark">Read<em>Later</em></div>
+      <span class="logo-kanji">読む　保存する　思索する</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Vues</div>
+        <button class="nav-btn active" onclick="go('home',this)"><span class="ico">✦</span> Accueil</button>
+        <button class="nav-btn" onclick="go('all',this)"><span class="ico">◈</span> Tous <span class="badge" id="bAll">0</span></button>
+        <button class="nav-btn" onclick="go('review',this)"><span class="ico">⟳</span> Revue du jour</button>
+        <button class="nav-btn" onclick="go('fav',this)"><span class="ico">★</span> Favoris <span class="badge" id="bFav">0</span></button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Sources</div>
+        <button class="nav-btn" onclick="go('web',this)"><span class="ico">🌐</span> Web <span class="badge" id="bWeb">0</span></button>
+        <button class="nav-btn" onclick="go('email',this)"><span class="ico">✉️</span> Email <span class="badge" id="bEmail">0</span></button>
+        <button class="nav-btn" onclick="go('youtube',this)"><span class="ico">▶️</span> YouTube <span class="badge" id="bYt">0</span></button>
+        <button class="nav-btn" onclick="go('pdf',this)"><span class="ico">📄</span> PDF <span class="badge" id="bPdf">0</span></button>
+        <button class="nav-btn" onclick="go('podcast',this)"><span class="ico">🎙️</span> Podcasts <span class="badge" id="bPod">0</span></button>
+        <button class="nav-btn" onclick="go('kindle',this)"><span class="ico">📚</span> Kindle <span class="badge" id="bKindle">0</span></button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Outils</div>
+        <button class="nav-btn" onclick="go('setup',this)"><span class="ico">⚙</span> Configuration</button>
+        <button class="nav-btn" onclick="go('obsidian',this)"><span class="ico">◆</span> Obsidian</button>
+      </div>
+    </nav>
+    <button class="sidebar-add" onclick="openCapture()"><span class="plus-glyph">+</span> Capturer</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+      <div class="topbar-title" id="topTitle">Accueil</div>
+      <div class="search d-only">
+        <span style="color:var(--muted)">⌕</span>
+        <input type="text" placeholder="Rechercher…" oninput="handleSearch(this.value)">
+      </div>
+      <button class="btn d-only" onclick="openCapture()">+ Capturer</button>
+    </div>
+
+    <div class="content">
+
+      <!-- ACCUEIL -->
+      <div class="view active" id="v-home">
+        <div class="stats">
+          <div class="stat"><div class="stat-n" id="statTotal">0</div><div class="stat-l">Highlights</div></div>
+          <div class="stat"><div class="stat-n" id="statWeek">0</div><div class="stat-l">Cette semaine</div></div>
+          <div class="stat"><div class="stat-n" id="statFav">0</div><div class="stat-l">Favoris</div></div>
+        </div>
+        <div class="daily" id="dailyBox" style="display:none">
+          <div class="daily-label">✦ Mémoire du jour</div>
+          <div class="daily-quote" id="dailyQ"></div>
+          <div class="daily-source" id="dailyS"></div>
+          <div class="daily-actions">
+            <button class="btn" onclick="refreshDaily()">↻ Autre</button>
+            <button class="btn obs" id="dailyObsBtn">◆ Obsidian</button>
+          </div>
+        </div>
+        <div class="sec-head"><h3>Récents</h3><span class="sub" id="recentSub"></span></div>
+        <div class="cards-grid" id="recentGrid"></div>
+      </div>
+
+      <div class="view" id="v-all"><div class="cards-grid" id="allGrid"></div><div class="empty" id="emptyAll"><div class="ico">◈</div><p>Aucun highlight</p></div></div>
+      <div class="view" id="v-web"><div class="cards-grid" id="webGrid"></div><div class="empty" id="emptyWeb"><div class="ico">🌐</div><p>Aucune capture web</p></div></div>
+      <div class="view" id="v-email"><div class="cards-grid" id="emailGrid"></div><div class="empty" id="emptyEmail"><div class="ico">✉️</div><p>Aucun highlight email</p></div></div>
+      <div class="view" id="v-youtube"><div class="cards-grid" id="ytGrid"></div><div class="empty" id="emptyYt"><div class="ico">▶️</div><p>Aucune note YouTube</p></div></div>
+      <div class="view" id="v-pdf"><div class="cards-grid" id="pdfGrid"></div><div class="empty" id="emptyPdf"><div class="ico">📄</div><p>Aucun highlight PDF</p></div></div>
+      <div class="view" id="v-podcast"><div class="cards-grid" id="podGrid"></div><div class="empty" id="emptyPod"><div class="ico">🎙️</div><p>Aucune capture podcast</p></div></div>
+      <div class="view" id="v-kindle"><div class="cards-grid" id="kindleGrid"></div><div class="empty" id="emptyKindle"><div class="ico">📚</div><p>Aucun surlignage Kindle importé</p></div></div>
+      <div class="view" id="v-fav"><div class="cards-grid" id="favGrid"></div><div class="empty" id="emptyFav"><div class="ico">★</div><p>Aucun favori</p></div></div>
+      <div class="view" id="v-review">
+        <div class="sec-head"><h3>Revue du jour</h3><span class="sub">5 highlights aléatoires</span></div>
+        <div class="cards-grid" id="reviewGrid"></div>
+      </div>
+
+      <!-- CONFIGURATION -->
+      <div class="view" id="v-setup">
+
+        <div class="guide-card" style="border-left:3px solid var(--gold)">
+          <h4>✦ Bookmarklet Surlignage — Mac (recommandé)</h4>
+          <p>Un clic active le mode surlignage sur n'importe quelle page web ou email. Sélectionnez autant de passages que vous voulez — chacun se surligne en jaune. Puis cliquez <strong>Envoyer tout</strong> : tous vos highlights arrivent dans Luminary en une fois.</p>
+          <div class="warn-box" style="margin-bottom:10px">
+            <strong>Étapes d'installation (une seule fois) :</strong>
+          </div>
+          <div class="steps" style="margin-bottom:14px">
+            <div class="step"><div class="step-n">1</div><div class="step-txt">Affichez la barre des favoris Safari : <strong>⌘⇧B</strong></div></div>
+            <div class="step"><div class="step-n">2</div><div class="step-txt">Faites <strong>⌘D</strong> → nommez-le <strong>✦ Luminary</strong> → choisissez <strong>Barre des favoris</strong> → Ajouter</div></div>
+            <div class="step"><div class="step-n">3</div><div class="step-txt"><strong>Clic droit</strong> sur le signet → <strong>Modifier l'adresse</strong> → effacez tout → collez le code ci-dessous → Entrée</div></div>
+          </div>
+          <div class="url-box"><span id="bkLetLink" style="font-size:10px;color:var(--muted)">chargement…</span><button class="copy-btn" onclick="copyBookmarklet()">Copier</button></div>
+          <p style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6"><strong style="color:var(--txt)">Utilisation :</strong> Sur n'importe quelle page, cliquez <strong>✦ Luminary</strong> dans vos favoris → la barre de surlignage apparaît en bas → sélectionnez du texte → cliquez <strong>✦ Surligner</strong> → répétez → <strong>Envoyer tout →</strong></p>
+        </div>
+
+        <div class="guide-card">
+          <h4>📱 Raccourci iOS — Share Sheet</h4>
+          <p>Pour Safari, Mail et YouTube sur iPhone. Sélectionnez du texte → Partager → Luminary → capture immédiate.</p>
+          <div class="warn-box">
+            <strong>Votre URL de capture :</strong>
+            <div class="url-box"><span id="captureUrlText">chargement…</span><button class="copy-btn" onclick="copyUrl()">Copier</button></div>
+          </div>
+          <div class="steps">
+            <div class="step"><div class="step-n">1</div><div class="step-txt">Ouvrez <strong>Raccourcis</strong> → appuyez <strong>+</strong></div></div>
+            <div class="step"><div class="step-n">2</div><div class="step-txt">Ajoutez l'action <strong>Texte</strong> → collez votre URL dedans</div></div>
+            <div class="step"><div class="step-n">3</div><div class="step-txt">Remplacez <strong>TEXTE</strong> dans l'URL par la variable <strong>Entrée du raccourci</strong></div></div>
+            <div class="step"><div class="step-n">4</div><div class="step-txt">Ajoutez l'action <strong>Ouvrir les URLs</strong> en dessous</div></div>
+            <div class="step"><div class="step-n">5</div><div class="step-txt">Appuyez <strong>ⓘ</strong> → activez <strong>Afficher dans le menu Partager</strong> → nommez <strong>Luminary</strong></div></div>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <h4>▶️ YouTube — comment capturer</h4>
+          <p>Appuyez sur <strong>+ Capturer</strong> → onglet <strong>YouTube</strong> → collez l'URL → <strong>Charger</strong>. La retranscription s'affiche ligne par ligne. Appuyez sur les lignes pour les sélectionner → <strong>Sauvegarder</strong>.</p>
+        </div>
+
+      </div>
+
+      <!-- OBSIDIAN -->
+      <div class="view" id="v-obsidian">
+
+        <div class="obs-section">
+          <h4>◆ Vault</h4>
+          <p>Nom exact de votre vault Obsidian (sensible à la casse). Les notes iront dans <strong>1 - Inbox</strong> automatiquement.</p>
+          <div class="field">
+            <label>Nom du vault</label>
+            <div class="obs-row">
+              <input id="obsVault" type="text" placeholder="Mon Vault" oninput="saveObs()">
+              <button class="btn obs" onclick="testObs()">◆ Tester</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="obs-section">
+          <h4>◆ Propriétés des notes</h4>
+          <p>Ces valeurs remplissent le frontmatter YAML de chaque note exportée vers Obsidian.</p>
+
+          <div class="obs-props-grid">
+            <div class="obs-prop">
+              <div class="obs-prop-key">source</div>
+              <div class="obs-prop-val muted">Titre de la page / newsletter</div>
+            </div>
+            <div class="obs-prop">
+              <div class="obs-prop-key">url</div>
+              <div class="obs-prop-val muted">URL capturée automatiquement</div>
+            </div>
+            <div class="obs-prop">
+              <div class="obs-prop-key">date</div>
+              <div class="obs-prop-val muted">Date de capture automatique</div>
+            </div>
+            <div class="obs-prop editable">
+              <div class="obs-prop-key">auteur</div>
+              <div class="obs-prop-val">
+                <input id="obsAuteur" type="text" placeholder="Votre nom ou laisser vide" oninput="saveObsSettings()">
+              </div>
+            </div>
+            <div class="obs-prop editable">
+              <div class="obs-prop-key">status</div>
+              <div class="obs-prop-val">
+                <select id="obsStatus" onchange="saveObsSettings()">
+                  <option value="a traiter">a traiter</option>
+                  <option value="en cours">en cours</option>
+                  <option value="traite">traite</option>
+                  <option value="archive">archive</option>
+                </select>
+              </div>
+            </div>
+            <div class="obs-prop">
+              <div class="obs-prop-key">tags</div>
+              <div class="obs-prop-val muted">Tags ajoutés dans Luminary</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="obs-section">
+          <h4>◆ Aperçu de la note générée</h4>
+          <div class="md-box" id="mdPreview"></div>
+        </div>
+
+        <div class="obs-section">
+          <h4>◆ Export groupé</h4>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Toutes les notes iront dans <strong>1 - Inbox</strong> de votre vault.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn obs" onclick="exportAll()">◆ Tous les highlights</button>
+            <button class="btn obs" onclick="exportFavs()">★ Favoris seulement</button>
+            <button class="btn"     onclick="dlMd()">⬇ Télécharger .md</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- NAV MOBILE -->
+<div class="mob-nav" id="mobNav">
+  <div class="mob-nav-row">
+    <button class="mob-btn active" id="mn-home"   onclick="go('home',null,'mn-home')"><span class="ico">✦</span><span class="lbl">Accueil</span></button>
+    <button class="mob-btn"        id="mn-all"    onclick="go('all',null,'mn-all')"><span class="ico">◈</span><span class="lbl">Tous</span></button>
+    <button class="mob-btn"        id="mn-review" onclick="go('review',null,'mn-review')"><span class="ico">⟳</span><span class="lbl">Revue</span></button>
+    <button class="mob-btn"        id="mn-fav"    onclick="go('fav',null,'mn-fav')"><span class="ico">★</span><span class="lbl">Favoris</span></button>
+    <button class="mob-btn"        id="mn-obs"    onclick="go('obsidian',null,'mn-obs')"><span class="ico">◆</span><span class="lbl">Obsidian</span></button>
+  </div>
+</div>
+<button class="mob-fab" id="mobFab" onclick="openCapture()">✦</button>
+
+<!-- SHEET DETAIL -->
+<div class="overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="detailContent"></div>
+    <div class="sheet-footer" id="detailFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');</script>
+</body>
+</html>
