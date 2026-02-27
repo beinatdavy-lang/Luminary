@@ -945,23 +945,55 @@ function renderReader() {
   if (!el || !curPage) return;
   var p = curPage;
   var highlights = p.highlights || [];
+
+  // Marquer le texte surligné
   var content = esc(p.content || '');
   highlights.forEach(function(h) {
     var escaped = esc(h.text);
-    content = content.split(escaped).join('<mark class="rl-reader-hl" onclick="deleteReaderHL(\'' + p.id + '\',\'' + h.id + '\')">'+escaped+'</mark>');
+    content = content.split(escaped).join(
+      '<mark class="rl-reader-hl" onclick="deleteReaderHL(\'' + p.id + '\',\'' + h.id + '\')" title="Clic pour retirer">' + escaped + '</mark>'
+    );
   });
-  var html = '<div style="max-width:680px;margin:0 auto;padding:0 16px 80px">';
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">';
-  html += '<button onclick="go(\'pages\')" style="background:rgba(255,255,255,.07);border:none;color:#aaa;font-size:13px;padding:8px 14px;border-radius:20px;cursor:pointer">Pages</button>';
-  html += '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:#edeae3">' + esc(p.title || p.url) + '</div>';
+
+  var html = '<div style="display:flex;height:calc(100vh - 60px);overflow:hidden">';
+
+  // ── CONTENU PRINCIPAL ──
+  html += '<div style="flex:1;overflow-y:auto;padding:20px 24px 80px">';
+  html += '<div style="max-width:660px;margin:0 auto">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">';
+  html += '<button onclick="go(\'pages\')" style="background:rgba(255,255,255,.07);border:none;color:#aaa;font-size:13px;padding:8px 14px;border-radius:20px;cursor:pointer">← Pages</button>';
+  html += '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:#edeae3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.title || p.url) + '</div>';
   if (p.url) html += '<a href="' + esc(p.url) + '" target="_blank" style="font-size:12px;color:#6a6778;text-decoration:none">Voir original</a>';
+  html += '</div></div>';
+  html += '<div style="background:#17171f;border:1px solid rgba(201,169,110,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#c9a96e;margin-bottom:20px">✦ Sélectionnez du texte pour surligner</div>';
+  html += '<div id="reader-content" style="font-size:16px;line-height:1.85;color:#d4d0c8;white-space:pre-wrap;font-family:Georgia,serif">' + content + '</div>';
+  html += '</div></div>';
+
+  // ── PANNEAU LATÉRAL ──
+  html += '<div id="reader-panel" style="width:280px;flex-shrink:0;border-left:1px solid rgba(255,255,255,.07);overflow-y:auto;background:#0f0f14;padding:16px">';
+  html += '<div style="font-size:11px;color:#6a6778;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">✦ Surlignages</div>';
+
+  if (!highlights.length) {
+    html += '<div style="font-size:13px;color:#6a6778;line-height:1.6">Aucun surlignage<br>Sélectionnez du texte dans l\'article</div>';
+  } else {
+    // Bouton Obsidian groupé
+    html += '<button onclick="sendPageToObs(\'' + p.id + '\')" style="width:100%;background:rgba(120,80,200,.2);border:1px solid rgba(120,80,200,.4);color:#b09fdf;font-size:12px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:14px">◆ Envoyer dans Obsidian</button>';
+
+    highlights.forEach(function(h) {
+      html += '<div style="background:#17171f;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px;margin-bottom:10px">';
+      html += '<div style="font-size:13px;color:#edeae3;line-height:1.6;font-style:italic">&ldquo;' + esc(h.text) + '&rdquo;</div>';
+      html += '<div style="margin-top:6px;display:flex;gap:6px">';
+      html += '<span class="act obs" style="font-size:11px" onclick="sendSingleHLToObs(\'' + p.id + '\',\'' + h.id + '\')">◆ Obsidian</span>';
+      html += '<span class="act danger" style="font-size:11px" onclick="deleteReaderHL(\'' + p.id + '\',\'' + h.id + '\')">✕</span>';
+      html += '</div></div>';
+    });
+  }
+
   html += '</div>';
-  html += '<div style="font-size:12px;color:#c9a96e">' + highlights.length + ' surlignage' + (highlights.length !== 1 ? 's' : '') + '</div>';
   html += '</div>';
-  html += '<div style="background:#17171f;border:1px solid rgba(201,169,110,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#c9a96e;margin-bottom:16px">Selectionnez du texte pour le surligner</div>';
-  html += '<div id="reader-content" style="font-size:16px;line-height:1.8;color:#d4d0c8;white-space:pre-wrap;font-family:Georgia,serif">' + content + '</div>';
-  html += '</div>';
+
   el.innerHTML = html;
+
   var rc = document.getElementById('reader-content');
   if (rc) {
     rc.addEventListener('mouseup', function() {
@@ -972,6 +1004,37 @@ function renderReader() {
       sel.removeAllRanges();
     });
   }
+}
+
+function sendPageToObs(pageId) {
+  var p = null;
+  for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === pageId) { p = PAGES[i]; break; } }
+  if (!p) return;
+  if (!obsVault.trim()) { showToast('Configurez votre vault Obsidian d\'abord'); go('obsidian'); return; }
+  var highlights = p.highlights || [];
+  if (!highlights.length) { showToast('Aucun surlignage à envoyer'); return; }
+  highlights.forEach(function(h, i) {
+    setTimeout(function() {
+      var hl = { id: h.id, type: 'web', quote: h.text, source: p.title || p.url, url: p.url || '', note: '', tags: [], date: h.date || new Date().toISOString(), fav: false, transcript: '' };
+      var uri = buildURI(hl);
+      if (uri) window.location.href = uri;
+    }, i * 900);
+  });
+  showToast('◆ Envoi de ' + highlights.length + ' surlignage' + (highlights.length > 1 ? 's' : '') + '...');
+}
+
+function sendSingleHLToObs(pageId, hlId) {
+  var p = null;
+  for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === pageId) { p = PAGES[i]; break; } }
+  if (!p) return;
+  if (!obsVault.trim()) { showToast('Configurez votre vault Obsidian d\'abord'); go('obsidian'); return; }
+  var h = null;
+  for (var j = 0; j < (p.highlights || []).length; j++) { if (p.highlights[j].id === hlId) { h = p.highlights[j]; break; } }
+  if (!h) return;
+  var hl = { id: h.id, type: 'web', quote: h.text, source: p.title || p.url, url: p.url || '', note: '', tags: [], date: h.date || new Date().toISOString(), fav: false, transcript: '' };
+  var uri = buildURI(hl);
+  if (uri) window.location.href = uri;
+  showToast('◆ Ouverture dans Obsidian...');
 }
 
 function addReaderHL(pageId, text) {
