@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+
+
+
+     <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -10,6 +13,18 @@
 <title>ReadLater</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="app.css">
+<style>
+  .rl-reader-hl {
+    background: rgba(201,169,110,.4);
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 1px 0;
+    transition: background .15s;
+  }
+  .rl-reader-hl:hover {
+    background: rgba(201,169,110,.7);
+  }
+</style>
 </head>
 <body>
 
@@ -122,12 +137,10 @@
         <div class="step"><div class="step-n">3</div><div class="step-txt">Collez ci-dessous ou importez le fichier</div></div>
       </div>
     </div>
-
     <div class="field">
       <label>Titre du livre</label>
       <input id="kindleBookTitle" type="text" placeholder="Nom du livre — détecté automatiquement si possible">
     </div>
-
     <div class="field">
       <label>Coller le contenu copié depuis read.amazon.com</label>
       <textarea id="kindlePasteArea" rows="6" placeholder="Collez ici le contenu copié depuis read.amazon.com…"></textarea>
@@ -139,7 +152,6 @@
         <input type="file" accept=".html,.htm,.txt" onchange="handleKindleFile(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer">
       </label>
     </div>
-
     <div id="kindlePreviewBox" style="display:none">
       <div class="kindle-preview-header">
         <span id="kindleCount"></span>
@@ -149,7 +161,7 @@
     </div>
   </div>
 
-    <!-- PDF -->
+  <!-- PDF -->
   <div id="fields-pdf" style="display:none">
     <div class="field"><label>Texte sélectionné *</label><textarea id="cpQuote" rows="5" placeholder="Collez le passage du PDF…"></textarea></div>
     <div class="field"><label>Source</label><input id="cpSource" type="text" placeholder="Titre, auteur…"></div>
@@ -182,6 +194,10 @@
         <button class="nav-btn" onclick="go('all',this)"><span class="ico">◈</span> Tous <span class="badge" id="bAll">0</span></button>
         <button class="nav-btn" onclick="go('review',this)"><span class="ico">⟳</span> Revue du jour</button>
         <button class="nav-btn" onclick="go('fav',this)"><span class="ico">★</span> Favoris <span class="badge" id="bFav">0</span></button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Pages</div>
+        <button class="nav-btn" onclick="go('pages',this)"><span class="ico">📖</span> Pages sauvegardées <span class="badge" id="bPages">0</span></button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">Sources</div>
@@ -247,22 +263,31 @@
         <div class="cards-grid" id="reviewGrid"></div>
       </div>
 
+      <!-- PAGES SAUVEGARDÉES -->
+      <div class="view" id="v-pages">
+        <div class="cards-grid" id="pagesGrid"></div>
+        <div class="empty" id="emptyPages">
+          <div class="ico">📖</div>
+          <p>Aucune page sauvegardée</p>
+          <p style="font-size:13px;color:#6a6778;margin-top:8px">Cliquez sur le bouton <strong style="color:#c9a96e">✦</strong> sur n'importe quelle page web pour la sauvegarder ici et la relire tranquillement.</p>
+        </div>
+      </div>
+
+      <!-- READER -->
+      <div class="view" id="v-reader" style="padding:16px 0"></div>
+
       <!-- CONFIGURATION -->
       <div class="view" id="v-setup">
 
         <div class="guide-card" style="border-left:3px solid var(--gold)">
-          <h4>✦ Bookmarklet Surlignage — Mac (recommandé)</h4>
-          <p>Un clic active le mode surlignage sur n'importe quelle page web ou email. Sélectionnez autant de passages que vous voulez — chacun se surligne en jaune. Puis cliquez <strong>Envoyer tout</strong> : tous vos highlights arrivent dans Luminary en une fois.</p>
-          <div class="warn-box" style="margin-bottom:10px">
-            <strong>Étapes d'installation (une seule fois) :</strong>
+          <h4>✦ Sauvegarder une page entière</h4>
+          <p>Le bouton <strong style="color:#c9a96e">✦</strong> en bas à droite de chaque page sauvegarde l'article complet dans ReadLater. Vous pouvez ensuite le lire ici et <strong>surligner du texte directement</strong> dans ReadLater.</p>
+          <div class="steps" style="margin-top:12px">
+            <div class="step"><div class="step-n">1</div><div class="step-txt">Naviguez sur n'importe quelle page web</div></div>
+            <div class="step"><div class="step-n">2</div><div class="step-txt">Cliquez sur le bouton <strong style="color:#c9a96e">✦</strong> en bas à droite</div></div>
+            <div class="step"><div class="step-n">3</div><div class="step-txt">ReadLater s'ouvre avec la page complète</div></div>
+            <div class="step"><div class="step-n">4</div><div class="step-txt">Sélectionnez du texte pour le surligner</div></div>
           </div>
-          <div class="steps" style="margin-bottom:14px">
-            <div class="step"><div class="step-n">1</div><div class="step-txt">Affichez la barre des favoris Safari : <strong>⌘⇧B</strong></div></div>
-            <div class="step"><div class="step-n">2</div><div class="step-txt">Faites <strong>⌘D</strong> → nommez-le <strong>✦ Luminary</strong> → choisissez <strong>Barre des favoris</strong> → Ajouter</div></div>
-            <div class="step"><div class="step-n">3</div><div class="step-txt"><strong>Clic droit</strong> sur le signet → <strong>Modifier l'adresse</strong> → effacez tout → collez le code ci-dessous → Entrée</div></div>
-          </div>
-          <div class="url-box"><span id="bkLetLink" style="font-size:10px;color:var(--muted)">chargement…</span><button class="copy-btn" onclick="copyBookmarklet()">Copier</button></div>
-          <p style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6"><strong style="color:var(--txt)">Utilisation :</strong> Sur n'importe quelle page, cliquez <strong>✦ Luminary</strong> dans vos favoris → la barre de surlignage apparaît en bas → sélectionnez du texte → cliquez <strong>✦ Surligner</strong> → répétez → <strong>Envoyer tout →</strong></p>
         </div>
 
         <div class="guide-card">
@@ -369,8 +394,8 @@
 <div class="mob-nav" id="mobNav">
   <div class="mob-nav-row">
     <button class="mob-btn active" id="mn-home"   onclick="go('home',null,'mn-home')"><span class="ico">✦</span><span class="lbl">Accueil</span></button>
+    <button class="mob-btn"        id="mn-pages"  onclick="go('pages',null,'mn-pages')"><span class="ico">📖</span><span class="lbl">Pages</span></button>
     <button class="mob-btn"        id="mn-all"    onclick="go('all',null,'mn-all')"><span class="ico">◈</span><span class="lbl">Tous</span></button>
-    <button class="mob-btn"        id="mn-review" onclick="go('review',null,'mn-review')"><span class="ico">⟳</span><span class="lbl">Revue</span></button>
     <button class="mob-btn"        id="mn-fav"    onclick="go('fav',null,'mn-fav')"><span class="ico">★</span><span class="lbl">Favoris</span></button>
     <button class="mob-btn"        id="mn-obs"    onclick="go('obsidian',null,'mn-obs')"><span class="ico">◆</span><span class="lbl">Obsidian</span></button>
   </div>
