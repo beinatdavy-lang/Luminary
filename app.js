@@ -891,19 +891,31 @@ function renderPages() {
   if (e) e.style.display = 'none';
   g.innerHTML = PAGES.map(function(p) {
     var date = new Date(p.date).toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
-    var hlCount = (p.highlights || []).length;
-    var preview = (p.content || '').substring(0, 120).replace(/\n+/g, ' ') + '...';
-    var html = '<div class="hcard web" onclick="openReader(\'' + p.id + '\')" style="cursor:pointer">';
+    var highlights = p.highlights || [];
+    var html = '<div class="hcard web">';
     html += '<div class="hcard-meta">';
-    html += '<span class="type-pill web">Lire</span>';
+    html += '<span class="type-pill web">page</span>';
     html += '<span class="hcard-source">' + esc(p.title || p.url) + '</span>';
     html += '<span class="hcard-date">' + date + '</span>';
     html += '</div>';
-    html += '<div class="hcard-quote" style="font-style:normal;color:#aaa;font-size:13px">' + esc(preview) + '</div>';
-    html += '<span class="act" onclick="event.stopPropagation();openReader(\'' + p.id + '\')">Lire</span>';
-    html += '<span class="act danger" onclick="event.stopPropagation();delPage(\'' + p.id + '\')">X</span>';
-    html += '<span class="act" onclick="event.stopPropagation();openReader(\'' + p.id + '\')">Lire</span>';
-    html += '<span class="act danger" onclick="event.stopPropagation();delPage(\'' + p.id + '\')">X</span>';
+    if (highlights.length) {
+      html += '<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:10px">';
+      highlights.forEach(function(h) {
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px">';
+        html += '<span style="color:#c9a96e;font-size:11px;margin-top:3px;flex-shrink:0">\u2736</span>';
+        html += '<div style="flex:1">';
+        html += '<div style="font-size:14px;color:#edeae3;line-height:1.6;font-style:italic">&ldquo;' + esc(h.text) + '&rdquo;</div>';
+        html += '<span class="act danger" style="font-size:11px;margin-top:4px;display:inline-block" onclick="deleteReaderHL(\'' + p.id + '\',\'' + h.id + '\')">Retirer</span>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="font-size:13px;color:#6a6778;margin-top:8px">Aucun surlignage &mdash; ouvrez pour lire et surligner</div>';
+    }
+    html += '<div class="hcard-actions" style="margin-top:10px">';
+    html += '<span class="act" onclick="openReader(\'' + p.id + '\')">Lire</span>';
+    if (p.url) html += '<span class="act" onclick="window.open(\'' + esc(p.url) + '\',\'_blank\')">Source</span>';
+    html += '<span class="act danger" onclick="delPage(\'' + p.id + '\')">Supprimer</span>';
     html += '</div></div>';
     return html;
   }).join('');
@@ -970,11 +982,6 @@ function addReaderHL(pageId, text) {
   if (p.highlights.some(function(h) { return h.text === text; })) { showToast('Deja surligne'); return; }
   var hlId = Date.now().toString() + Math.random().toString(36).slice(2, 5);
   p.highlights.push({ id: hlId, text: text, date: new Date().toISOString() });
-  HL.unshift({
-    id: hlId, type: 'web', quote: text,
-    source: p.title || p.url, url: p.url || '',
-    note: '', tags: [], date: new Date().toISOString(), fav: false, transcript: ''
-  });
   persist();
   renderReader();
   showToast('Surligne !');
@@ -984,9 +991,7 @@ function deleteReaderHL(pageId, hlId) {
   var p = null;
   for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === pageId) { p = PAGES[i]; break; } }
   if (!p || !p.highlights) return;
-  if (!confirm('Retirer ce surlignage ?')) return;
   p.highlights = p.highlights.filter(function(h) { return h.id !== hlId; });
-  HL = HL.filter(function(h) { return h.id !== hlId; });
   persist();
   renderReader();
   showToast('Retire');
