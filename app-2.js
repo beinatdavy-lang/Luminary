@@ -10,22 +10,26 @@ function esc(s) {
 }
 
 var HL = [];
+var PAGES = [];
 var obsVault = '';
 var obsFolder = 'Luminary';
 var curTab = 'web';
 var curView = 'home';
+var curPage = null; // page en cours de lecture
 var dailyHL = null;
 var selectedLines = [];
 var transcriptData = [];
 
 function loadState() {
-  try { HL = JSON.parse(localStorage.getItem('lum_hl') || '[]'); } catch(e) { HL = []; }
+  try { HL    = JSON.parse(localStorage.getItem('lum_hl')    || '[]'); } catch(e) { HL = []; }
+  try { PAGES = JSON.parse(localStorage.getItem('lum_pages') || '[]'); } catch(e) { PAGES = []; }
   obsVault  = localStorage.getItem('lum_vault')  || '';
   obsFolder = localStorage.getItem('lum_folder') || 'Luminary';
 }
 
 function persist() {
-  localStorage.setItem('lum_hl', JSON.stringify(HL));
+  localStorage.setItem('lum_hl',    JSON.stringify(HL));
+  localStorage.setItem('lum_pages', JSON.stringify(PAGES));
   updateBadges();
 }
 
@@ -48,7 +52,7 @@ function seedDemo() {
   persist();
 }
 
-var TITLES = { home:'Accueil', all:'Tous', web:'Web', email:'Email', youtube:'YouTube', pdf:'PDF', podcast:'Podcasts', kindle:'Kindle', fav:'Favoris', review:'Revue du jour', setup:'Configuration', obsidian:'Obsidian' };
+var TITLES = { home:'Accueil', all:'Tous', web:'Web', email:'Email', youtube:'YouTube', pdf:'PDF', podcast:'Podcasts', kindle:'Kindle', fav:'Favoris', review:'Revue du jour', setup:'Configuration', obsidian:'Obsidian', pages:'Pages sauvegardées', reader:'Lecture' };
 var TYPE_EMO = { web:'🌐', email:'✉️', youtube:'▶️', pdf:'📄', podcast:'🎙️', kindle:'📚' };
 
 function go(v, btn, mobId) {
@@ -78,6 +82,8 @@ function renderView(v) {
   else if (v === 'review')  renderReview();
   else if (v === 'setup')   renderSetup();
   else if (v === 'obsidian') renderObsidian();
+  else if (v === 'pages')   renderPages();
+  else if (v === 'reader')  renderReader();
 }
 
 function renderHome() {
@@ -170,14 +176,15 @@ function cardHTML(h) {
 
 function updateBadges() {
   var m = {
-    bAll:   HL.length,
-    bFav:   HL.filter(function(h) { return h.fav; }).length,
-    bWeb:   HL.filter(function(h) { return h.type === 'web'; }).length,
-    bEmail: HL.filter(function(h) { return h.type === 'email'; }).length,
-    bYt:    HL.filter(function(h) { return h.type === 'youtube'; }).length,
-    bPdf:   HL.filter(function(h) { return h.type === 'pdf'; }).length,
-    bPod:     HL.filter(function(h) { return h.type === 'podcast'; }).length,
-    bKindle:  HL.filter(function(h) { return h.type === 'kindle'; }).length
+    bAll:    HL.length,
+    bFav:    HL.filter(function(h) { return h.fav; }).length,
+    bWeb:    HL.filter(function(h) { return h.type === 'web'; }).length,
+    bEmail:  HL.filter(function(h) { return h.type === 'email'; }).length,
+    bYt:     HL.filter(function(h) { return h.type === 'youtube'; }).length,
+    bPdf:    HL.filter(function(h) { return h.type === 'pdf'; }).length,
+    bPod:    HL.filter(function(h) { return h.type === 'podcast'; }).length,
+    bKindle: HL.filter(function(h) { return h.type === 'kindle'; }).length,
+    bPages:  PAGES.length
   };
   Object.keys(m).forEach(function(k) { var el = document.getElementById(k); if (el) el.textContent = m[k]; });
 }
@@ -924,3 +931,175 @@ function importKindleAll() {
   showToast('📚 ' + imported + ' surlignage' + (imported > 1 ? 's' : '') + ' Kindle importé' + (imported > 1 ? 's' : '') + ' !');
   window._kindlePending = null;
 }
+
+
+/* ══════════════════════════════
+   PAGES SAUVEGARDÉES
+══════════════════════════════ */
+
+function renderPages() {
+  var g = document.getElementById('pagesGrid');
+  var e = document.getElementById('emptyPages');
+  if (!g) return;
+  if (!PAGES.length) {
+    g.innerHTML = '';
+    if (e) e.style.display = '';
+    return;
+  }
+  if (e) e.style.display = 'none';
+  g.innerHTML = PAGES.map(function(p) {
+    var date = new Date(p.date).toLocaleDateString('fr-FR', { day:'numeric', month:'short' });
+    var hlCount = (p.highlights || []).length;
+    var preview = p.content ? p.content.substring(0, 120).replace(/\n+/g, ' ') + '…' : '';
+    return '<div class="hcard web" onclick="openReader('' + p.id + '')" style="cursor:pointer">'
+      + '<div class="hcard-meta">'
+      + '<span class="type-pill web">🌐 page</span>'
+      + '<span class="hcard-source">' + esc(p.title || p.url) + '</span>'
+      + '<span class="hcard-date">' + date + '</span>'
+      + '</div>'
+      + '<div class="hcard-quote" style="font-style:normal;color:#aaa;font-size:13px">' + esc(preview) + '</div>'
+      + (hlCount ? '<div class="hcard-note">✦ ' + hlCount + ' surlignage' + (hlCount > 1 ? 's' : '') + '</div>' : '')
+      + '<div class="hcard-actions">'
+      + '<span class="act" onclick="event.stopPropagation();openReader('' + p.id + '')">📖 Lire</span>'
+      + '<span class="act danger" onclick="event.stopPropagation();delPage('' + p.id + '')">✕</span>'
+      + '</div></div>';
+  }).join('');
+}
+
+function delPage(id) {
+  if (!confirm('Supprimer cette page sauvegardée ?')) return;
+  PAGES = PAGES.filter(function(p) { return p.id !== id; });
+  persist();
+  renderPages();
+  showToast('Page supprimée');
+}
+
+/* ══════════════════════════════
+   READER VIEW
+══════════════════════════════ */
+
+function openReader(id) {
+  curPage = null;
+  for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === id) { curPage = PAGES[i]; break; } }
+  if (!curPage) return;
+  go('reader');
+}
+
+function renderReader() {
+  var el = document.getElementById('v-reader');
+  if (!el || !curPage) return;
+
+  var p = curPage;
+  var highlights = p.highlights || [];
+
+  // Construire le texte avec les surlignages marqués
+  var content = esc(p.content || '');
+  highlights.forEach(function(h) {
+    var escaped = esc(h.text);
+    content = content.replace(escaped,
+      '<mark class="rl-reader-hl" data-hlid="' + h.id + '" title="Clic pour supprimer" onclick="deleteReaderHL('' + p.id + "','" + h.id + '')">' + escaped + '</mark>');
+  });
+
+  el.innerHTML =
+    '<div style="max-width:680px;margin:0 auto;padding:0 0 80px">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">'
+    + '<button onclick="go('pages')" style="background:rgba(255,255,255,.07);border:none;color:#aaa;font-size:13px;padding:8px 14px;border-radius:20px;cursor:pointer">← Pages</button>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div style="font-size:15px;font-weight:600;color:#edeae3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(p.title || p.url) + '</div>'
+    + (p.url ? '<a href="' + esc(p.url) + '" target="_blank" style="font-size:12px;color:#6a6778;text-decoration:none">🔗 Voir original</a>' : '')
+    + '</div>'
+    + '<div style="font-size:12px;color:#c9a96e">✦ ' + highlights.length + ' surlignage' + (highlights.length !== 1 ? 's' : '') + '</div>'
+    + '</div>'
+    + '<div id="reader-hint" style="background:#17171f;border:1px solid rgba(201,169,110,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:#c9a96e;margin-bottom:16px">✦ Sélectionnez du texte pour le surligner</div>'
+    + '<div id="reader-content" style="font-size:16px;line-height:1.8;color:#d4d0c8;white-space:pre-wrap;font-family:Georgia,serif">' + content + '</div>'
+    + '</div>';
+
+  // Écouter les sélections dans le reader
+  var rc = document.getElementById('reader-content');
+  if (rc) {
+    rc.addEventListener('mouseup', function() {
+      var sel = window.getSelection();
+      var txt = sel ? sel.toString().trim() : '';
+      if (!txt || txt.length < 3) return;
+      addReaderHL(p.id, txt);
+      sel.removeAllRanges();
+    });
+  }
+}
+
+function addReaderHL(pageId, text) {
+  var p = null;
+  for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === pageId) { p = PAGES[i]; break; } }
+  if (!p) return;
+  if (!p.highlights) p.highlights = [];
+
+  // Éviter les doublons
+  var exists = p.highlights.some(function(h) { return h.text === text; });
+  if (exists) { showToast('Déjà surligné'); return; }
+
+  var hlId = Date.now().toString() + Math.random().toString(36).slice(2,5);
+  p.highlights.push({ id: hlId, text: text, date: new Date().toISOString() });
+
+  // Sauvegarder aussi dans HL principal
+  HL.unshift({
+    id:         hlId,
+    type:       'web',
+    quote:      text,
+    source:     p.title || p.url,
+    url:        p.url || '',
+    note:       '',
+    tags:       [],
+    date:       new Date().toISOString(),
+    fav:        false,
+    transcript: ''
+  });
+
+  persist();
+  renderReader();
+  showToast('✦ Surligné !');
+}
+
+function deleteReaderHL(pageId, hlId) {
+  var p = null;
+  for (var i = 0; i < PAGES.length; i++) { if (PAGES[i].id === pageId) { p = PAGES[i]; break; } }
+  if (!p || !p.highlights) return;
+  if (!confirm('Retirer ce surlignage ?')) return;
+  p.highlights = p.highlights.filter(function(h) { return h.id !== hlId; });
+  HL = HL.filter(function(h) { return h.id !== hlId; });
+  persist();
+  renderReader();
+  showToast('Retiré');
+}
+
+/* ══════════════════════════════
+   RÉCEPTION POSTMESSAGE
+══════════════════════════════ */
+
+window.addEventListener('message', function(e) {
+  var allowed = 'https://beinatdavy-lang.github.io';
+  // Accepter le message si c'est une page sauvegardée
+  if (!e.data || e.data.type !== 'rl-save-page') return;
+
+  var data = e.data;
+  var page = {
+    id:         Date.now().toString() + Math.random().toString(36).slice(2),
+    title:      (data.title || data.url || 'Page').substring(0, 100),
+    url:        data.url || '',
+    content:    (data.content || '').substring(0, 200000), // max ~200k chars
+    date:       new Date().toISOString(),
+    highlights: []
+  };
+
+  PAGES.unshift(page);
+  persist();
+
+  // Accuser réception
+  if (e.source) {
+    try { e.source.postMessage({ type: 'rl-ack', pageId: page.id }, '*'); } catch(err) {}
+  }
+
+  // Ouvrir directement le reader
+  curPage = page;
+  go('reader');
+  showToast('✦ Page sauvegardée — sélectionnez pour surligner');
+});
